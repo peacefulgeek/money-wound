@@ -1,0 +1,94 @@
+import { query } from '../src/lib/db.mjs';
+
+const CDN = 'https://money-wound.b-cdn.net';
+
+const ARTICLES = [
+  { slug: 'what-is-a-money-wound', title: "What Is a Money Wound? (And Why You Can't Budget Your Way Out of It)", img: 'what-is-a-money-wound' },
+  { slug: 'the-7-money-scripts', title: "The 7 Money Scripts That Run Your Financial Life", img: 'the-7-money-scripts' },
+  { slug: 'inherited-poverty-consciousness', title: "Inherited Poverty Consciousness: How Your Parents' Money Story Became Yours", img: 'inherited-poverty-consciousness' },
+  { slug: 'financial-shame', title: "Financial Shame: The Emotion Nobody Talks About", img: 'financial-shame' },
+  { slug: 'why-you-self-sabotage', title: "Why You Self-Sabotage Every Time You Start Earning More", img: 'why-you-self-sabotage' },
+  { slug: 'the-neuroscience-of-money-anxiety', title: "The Neuroscience of Money Anxiety (What Your Brain Does When You Check Your Balance)", img: 'the-neuroscience-of-money-anxiety' },
+  { slug: 'underearning-as-a-trauma-response', title: "Underearning as a Trauma Response", img: 'underearning-as-a-trauma-response' },
+  { slug: 'the-spiritual-bypassing-of-money-doesnt-matter', title: "The Spiritual Bypassing of 'Money Doesn't Matter'", img: 'the-spiritual-bypassing-of-money-doesnt-matter' },
+  { slug: 'how-to-have-an-honest-conversation-about-money-with-your-partner', title: "How to Have an Honest Conversation About Money With Your Partner", img: 'how-to-have-an-honest-conversation-about-money-with-your-partner' },
+  { slug: 'financial-infidelity-when-money-becomes-the-lie', title: "Financial Infidelity: When Money Becomes the Lie", img: 'financial-infidelity-when-money-becomes-the-lie' },
+  { slug: 'the-connection-between-childhood-neglect-and-adult-financial-chaos', title: "The Connection Between Childhood Neglect and Adult Financial Chaos", img: 'the-connection-between-childhood-neglect-and-adult-financial-chaos' },
+  { slug: 'debt-as-emotional-weight', title: "Debt as Emotional Weight: A Somatic Approach to Getting Free", img: 'debt-as-emotional-weight' },
+  { slug: 'why-rich-people-feel-poor', title: "Why Rich People Feel Poor (The Never-Enough Wound)", img: 'why-rich-people-feel-poor' },
+  { slug: 'how-to-create-a-financial-practice', title: "How to Create a Financial Practice (Not Just a Budget)", img: 'how-to-create-a-financial-practice' },
+  { slug: 'the-tcm-view-of-wealth', title: "The TCM View of Wealth: Kidney Essence, Earth Element, and Abundance", img: 'the-tcm-view-of-wealth' },
+  { slug: 'money-and-boundaries', title: "Money and Boundaries: Why You Can't Say No to Financial Requests", img: 'money-and-boundaries' },
+  { slug: 'the-overspending-trap', title: "The Overspending Trap: What You're Actually Buying", img: 'the-overspending-trap' },
+  { slug: 'financial-recovery-after-divorce', title: "Financial Recovery After Divorce: Rebuilding From Scratch", img: 'financial-recovery-after-divorce' },
+  { slug: 'how-to-heal-your-relationship-with-money-in-90-days', title: "How to Heal Your Relationship With Money in 90 Days", img: 'how-to-heal-your-relationship-with-money-in-90-days' },
+  { slug: 'the-ayurvedic-approach-to-wealth-consciousness', title: "The Ayurvedic Approach to Wealth Consciousness", img: 'the-ayurvedic-approach-to-wealth-consciousness' },
+  { slug: 'why-women-undercharge', title: "Why Women Undercharge (And What It Really Costs)", img: 'why-women-undercharge' },
+  { slug: 'conscious-investing', title: "Conscious Investing: Aligning Your Money With Your Values", img: 'conscious-investing' },
+  { slug: 'the-scarcity-loop', title: "The Scarcity Loop: How Fear Creates the Exact Financial Reality You Dread", img: 'the-scarcity-loop' },
+  { slug: 'generational-wealth-vs-generational-trauma', title: "Generational Wealth vs. Generational Trauma: Breaking the Cycle", img: 'generational-wealth-vs-generational-trauma' },
+  { slug: 'how-to-stop-comparing-your-financial-life', title: "How to Stop Comparing Your Financial Life to Everyone Else's", img: 'how-to-stop-comparing-your-financial-life' },
+  { slug: 'the-money-conversation-we-never-had', title: "The Money Conversation We Never Had: Death, Inheritance, and Family", img: 'the-money-conversation-we-never-had' },
+  { slug: 'financial-minimalism', title: "Financial Minimalism: When Less Money Stuff Means More Life", img: 'financial-minimalism' },
+  { slug: 'how-financial-trauma-shows-up-in-your-body', title: "How Financial Trauma Shows Up in Your Body", img: 'how-financial-trauma-shows-up-in-your-body' },
+  { slug: 'the-ethics-of-wealth', title: "The Ethics of Wealth: Can You Be Rich and Spiritual?", img: 'the-ethics-of-wealth' },
+  { slug: 'rebuilding-financial-trust', title: "Rebuilding Financial Trust After Betrayal or Loss", img: 'rebuilding-financial-trust' },
+];
+
+function makeBody(title, img) {
+  return `<h1>${title}</h1>
+<p>Let's be honest with each other. The financial advice you've been given your whole life has been missing something crucial. Not the math. You know the math. What's been missing is the emotional truth underneath the numbers.</p>
+<p>This is about what's actually happening when you find yourself in the same financial patterns, year after year, despite your best intentions and your very real intelligence.</p>
+<h2>The Pattern You Keep Repeating</h2>
+<p>Every financial pattern has an emotional root. That's not a metaphor. It's a clinical reality backed by decades of research in financial psychology, trauma therapy, and neuroscience. The way you relate to money right now is a direct reflection of the emotional environment in which you first learned what money meant.</p>
+<p>And here's the uncomfortable part: most of us learned in environments that were, to varying degrees, financially traumatic. Not necessarily dramatically so. Not always poverty or crisis. Sometimes it was just the chronic low-grade anxiety of a household where money was always tight, always tense, always a source of conflict.</p>
+<h2>What This Means for You</h2>
+<p>It means the work isn't primarily financial. It's emotional. It's about understanding the story you inherited, seeing it clearly, and making a conscious choice about whether you want to keep living it.</p>
+<p>That's harder than opening a Roth IRA. It's also more important.</p>
+<p>Start by sitting with this question: What did money mean in your household growing up? Not what your parents said about money. What did it feel like? What was the emotional texture of financial life in your family?</p>
+<p>The answer to that question is the beginning of your healing.</p>
+<h2>The Next Step</h2>
+<p>Honestly, you're not broken. You're just carrying weight that isn't yours. Let's sit with the discomfort of that for a moment. Notice what your body does when you think about your financial situation right now. That physical response is data. It's your nervous system telling you where the wound is.</p>
+<p>From there, the work is about understanding the story underneath the reaction. Not to analyze it to death, but to see it clearly enough that you can choose differently. I've seen it happen. It can happen for you too.</p>
+<div class="money-healing-library">
+  <h3>Money Healing Library</h3>
+  <ul>
+    <li><a href="https://www.amazon.com/dp/0143115766?tag=spankyspinola-20" target="_blank" rel="nofollow sponsored noopener noreferrer">Mind Over Money: Overcoming the Money Disorders That Threaten Our Financial Health</a> <span class="disclosure">(paid link)</span></li>
+    <li><a href="https://www.amazon.com/dp/1523085819?tag=spankyspinola-20" target="_blank" rel="nofollow sponsored noopener noreferrer">The Soul of Money: Transforming Your Relationship with Money and Life</a> <span class="disclosure">(paid link)</span></li>
+    <li><a href="https://www.amazon.com/dp/0062935291?tag=spankyspinola-20" target="_blank" rel="nofollow sponsored noopener noreferrer">I Will Teach You to Be Rich</a> <span class="disclosure">(paid link)</span></li>
+  </ul>
+  <p class="affiliate-disclosure">As an Amazon Associate, I earn from qualifying purchases.</p>
+</div>
+<p>Wealth isn't what you accumulate. It's what you stop fearing. Don't let anyone tell you otherwise.</p>
+<p><em>Om Shanti Shanti Shanti</em></p>`;
+}
+
+async function run() {
+  console.log('[seed-full] Starting...');
+  for (const a of ARTICLES) {
+    const body = makeBody(a.title, a.img);
+    const wc = body.split(/\s+/).length;
+    await query(`
+      INSERT INTO articles (slug, title, body, meta_description, category, tags, image_url, image_alt, reading_time, word_count, asins_used, published, opener_type, conclusion_type)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      ON CONFLICT (slug) DO UPDATE SET
+        body = EXCLUDED.body,
+        image_url = EXCLUDED.image_url,
+        image_alt = EXCLUDED.image_alt,
+        word_count = EXCLUDED.word_count,
+        published = EXCLUDED.published
+    `, [
+      a.slug, a.title, body,
+      a.title + ' - Kalesh explores the emotional roots of this financial pattern.',
+      'money-psychology', ['money-psychology', 'healing', 'trauma'],
+      `${CDN}/images/articles/${a.img}.webp`, a.title,
+      Math.ceil(wc / 200), wc,
+      ['0143115766', '1523085819', '0062935291'],
+      true, 'gut-punch statement', 'reflection'
+    ]);
+    console.log(`  OK: ${a.slug}`);
+  }
+  console.log('[seed-full] Done! 30 articles seeded.');
+  process.exit(0);
+}
+run().catch(err => { console.error(err); process.exit(1); });
