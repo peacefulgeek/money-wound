@@ -51,9 +51,24 @@ async function getInitialData(url: string): Promise<Record<string, any>> {
 
 async function createServer() {
   const app = express();
-  app.use(compression());
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
+
+  // ─── www → non-www 301 redirect (must be first) ───────────────
+  // Runs in production only so local dev is unaffected.
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (process.env.NODE_ENV === 'production') {
+      const host = req.headers.host ?? '';
+      if (host.startsWith('www.')) {
+        const canonical = host.slice(4); // strip 'www.'
+        const proto = req.headers['x-forwarded-proto'] ?? 'https';
+        return res.redirect(301, `${proto}://${canonical}${req.originalUrl}`);
+      }
+    }
+    next();
+  });
+
+  app.use(compression());
 
   app.use('/health', healthRouter);
   app.use('/api/articles', articlesRouter);
