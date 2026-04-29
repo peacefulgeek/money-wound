@@ -21,23 +21,23 @@ async function getInitialData(url: string): Promise<Record<string, any>> {
     if (pathname === '/' || pathname === '') {
       const { rows } = await db.query(
         `SELECT slug, title, meta_description, category, image_url, image_alt, reading_time, published_at
-         FROM articles WHERE published = true ORDER BY published_at DESC LIMIT 6`
+         FROM articles WHERE status = 'published' ORDER BY published_at DESC LIMIT 6`
       );
       return { articles: rows };
     }
     if (pathname === '/articles') {
       const { rows } = await db.query(
         `SELECT slug, title, meta_description, category, image_url, image_alt, reading_time, published_at
-         FROM articles WHERE published = true ORDER BY published_at DESC LIMIT 20`
+         FROM articles WHERE status = 'published' ORDER BY published_at DESC LIMIT 20`
       );
-      const countResult = await db.query('SELECT COUNT(*) FROM articles WHERE published = true');
+      const countResult = await db.query("SELECT COUNT(*) FROM articles WHERE status = 'published'");
       return { articles: rows, total: parseInt(countResult.rows[0].count) };
     }
     const articleMatch = pathname.match(/^\/articles\/([^/?]+)$/);
     if (articleMatch) {
       const slug = articleMatch[1];
       const { rows } = await db.query(
-        'SELECT * FROM articles WHERE slug = $1 AND published = true',
+        "SELECT * FROM articles WHERE slug = $1 AND status = 'published'",
         [slug]
       );
       if (rows.length) return { article: rows[0] };

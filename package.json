@@ -14,7 +14,8 @@
     "visual-qa": "node scripts/visual-qa.mjs",
     "start": "NODE_ENV=production node scripts/start-with-cron.mjs",
     "verify-build": "NODE_ENV=production node -e \"import('./dist/index.js').then(()=>{console.log('import-ok');process.exit(0)}).catch(e=>{console.error(e);process.exit(1)})\"",
-    "seed": "node scripts/seed-articles.mjs"
+    "seed": "node scripts/seed-articles.mjs",
+    "bulk-seed": "node scripts/bulk-seed.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",

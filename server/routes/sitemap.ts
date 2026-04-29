@@ -3,11 +3,14 @@ import { getDb } from '../../src/lib/db.mjs';
 
 export const sitemapRouter = express.Router();
 
+// CRITICAL: Only include status='published' articles in the sitemap.
+// Queued articles must NEVER appear in the sitemap.
+
 sitemapRouter.get('/', async (req, res) => {
   try {
     const db = await getDb();
     const { rows } = await db.query(
-      'SELECT slug, published_at FROM articles WHERE published = true ORDER BY published_at DESC'
+      "SELECT slug, published_at FROM articles WHERE status = 'published' ORDER BY published_at DESC"
     );
 
     const baseUrl = 'https://yourmoneywound.com';
@@ -23,7 +26,7 @@ sitemapRouter.get('/', async (req, res) => {
       ...rows.map(r => `
   <url>
     <loc>${baseUrl}/articles/${r.slug}</loc>
-    <lastmod>${new Date(r.published_at).toISOString().split('T')[0]}</lastmod>
+    <lastmod>${new Date(r.published_at || new Date()).toISOString().split('T')[0]}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>`)

@@ -37,18 +37,12 @@ services:
       - key: GH_PAT
         scope: RUN_TIME
         type: SECRET
-      - key: ANTHROPIC_API_KEY
+      - key: OPENAI_API_KEY
         scope: RUN_TIME
         type: SECRET
-      - key: FAL_KEY
+      - key: OPENAI_BASE_URL
+        value: https://api.deepseek.com
         scope: RUN_TIME
-        type: SECRET
-      - key: BUNNY_STORAGE_ZONE
+      - key: OPENAI_MODEL
+        value: deepseek-v4-pro
         scope: RUN_TIME
-        type: SECRET
-      - key: BUNNY_API_KEY
-        scope: RUN_TIME
-        type: SECRET
-      - key: BUNNY_PULL_ZONE_URL
-        scope: RUN_TIME
-        type: SECRET

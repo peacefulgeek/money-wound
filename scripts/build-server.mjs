@@ -33,7 +33,7 @@ await build({
     'serve-static',
     'pg',
     'node-cron',
-    '@anthropic-ai/sdk',
+    'openai',
     'react',
     'react-dom',
     'react-router-dom',

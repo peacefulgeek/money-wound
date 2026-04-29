@@ -18,7 +18,6 @@ export async function getDb() {
     pool.on('error', (err) => {
       console.error('[db] Unexpected pool error', err);
     });
-    // Initialize schema
     await initSchema(pool);
   }
   return pool;
@@ -46,7 +45,9 @@ async function initSchema(pool) {
       reading_time INTEGER,
       author TEXT DEFAULT 'Kalesh',
       published BOOLEAN DEFAULT true,
-      published_at TIMESTAMPTZ DEFAULT NOW(),
+      status TEXT NOT NULL DEFAULT 'published',
+      published_at TIMESTAMPTZ,
+      queued_at TIMESTAMPTZ DEFAULT NOW(),
       created_at TIMESTAMPTZ DEFAULT NOW(),
       updated_at TIMESTAMPTZ DEFAULT NOW(),
       word_count INTEGER,
@@ -58,7 +59,17 @@ async function initSchema(pool) {
       conclusion_type TEXT
     );
     CREATE INDEX IF NOT EXISTS articles_slug_idx ON articles(slug);
-    CREATE INDEX IF NOT EXISTS articles_published_idx ON articles(published, published_at DESC);
+    CREATE INDEX IF NOT EXISTS articles_status_idx ON articles(status, published_at DESC);
     CREATE INDEX IF NOT EXISTS articles_category_idx ON articles(category);
+
+    -- Live migration: add new columns to existing DB without data loss
+    ALTER TABLE articles ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'published';
+    ALTER TABLE articles ADD COLUMN IF NOT EXISTS queued_at TIMESTAMPTZ;
+
+    -- Backfill: any row with published=true and no status gets marked published
+    UPDATE articles SET status = 'published'
+      WHERE (status IS NULL OR status = '') AND published = true;
+    -- Backfill queued_at from created_at where missing
+    UPDATE articles SET queued_at = created_at WHERE queued_at IS NULL;
   `);
 }

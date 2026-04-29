@@ -3,6 +3,9 @@ import { getDb } from '../../src/lib/db.mjs';
 
 export const articlesRouter = express.Router();
 
+// CRITICAL: All public routes MUST filter by status = 'published'.
+// Queued articles must NEVER leak to the frontend.
+
 articlesRouter.get('/', async (req, res) => {
   try {
     const db = await getDb();
@@ -10,7 +13,10 @@ articlesRouter.get('/', async (req, res) => {
     const offset = parseInt(req.query.offset as string) || 0;
     const category = req.query.category as string;
 
-    let queryStr = 'SELECT slug, title, meta_description, category, tags, image_url, image_alt, reading_time, published_at, word_count FROM articles WHERE published = true';
+    let queryStr = `SELECT slug, title, meta_description, category, tags, image_url, image_alt,
+                           reading_time, published_at, word_count
+                    FROM articles
+                    WHERE status = 'published'`;
     const params: any[] = [];
 
     if (category) {
@@ -22,7 +28,7 @@ articlesRouter.get('/', async (req, res) => {
     params.push(limit, offset);
 
     const { rows } = await db.query(queryStr, params);
-    const countResult = await db.query('SELECT COUNT(*) FROM articles WHERE published = true');
+    const countResult = await db.query("SELECT COUNT(*) FROM articles WHERE status = 'published'");
     res.json({ articles: rows, total: parseInt(countResult.rows[0].count) });
   } catch (err) {
     console.error('[articles route]', err);
@@ -34,7 +40,7 @@ articlesRouter.get('/:slug', async (req, res) => {
   try {
     const db = await getDb();
     const { rows } = await db.query(
-      'SELECT * FROM articles WHERE slug = $1 AND published = true',
+      "SELECT * FROM articles WHERE slug = $1 AND status = 'published'",
       [req.params.slug]
     );
     if (!rows.length) return res.status(404).json({ error: 'Not found' });
