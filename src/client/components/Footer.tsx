@@ -22,6 +22,8 @@ export default function Footer() {
           <h4>Explore</h4>
           <ul>
             <li><Link to="/articles">All Articles</Link></li>
+            <li><Link to="/assessments">Money Assessments</Link></li>
+            <li><Link to="/herbs">Herbs &amp; TCM</Link></li>
             <li><Link to="/tools">Money Healing Toolkit</Link></li>
             <li><Link to="/about">About Kalesh</Link></li>
           </ul>

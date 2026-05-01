@@ -7,7 +7,7 @@ sitemapRouter.get('/', async (req, res) => {
   try {
     const articles = await getSitemapArticles();
     const baseUrl = 'https://yourmoneywound.com';
-    const staticPages = ['', '/about', '/articles', '/tools', '/privacy'];
+    const staticPages = ['', '/about', '/articles', '/tools', '/privacy', '/assessments', '/herbs'];
     const urls = [
       ...staticPages.map(p => `
   <url>

@@ -25,6 +25,8 @@ export default function Nav() {
       </Link>
       <ul className={`site-nav__links${menuOpen ? ' open' : ''}`} role="list">
         <li><Link to="/articles">Articles</Link></li>
+        <li><Link to="/assessments">Assessments</Link></li>
+        <li><Link to="/herbs">Herbs &amp; TCM</Link></li>
         <li><Link to="/tools">Toolkit</Link></li>
         <li><Link to="/about">About</Link></li>
       </ul>
