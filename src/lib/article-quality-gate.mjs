@@ -35,7 +35,7 @@ const BANNED_PHRASES = [
 
 // ─── 3. Word count bounds ─────────────────────────────────────────────────────
 const MIN_WORDS = 1200;
-const MAX_WORDS = 2500;
+const MAX_WORDS = 3000;
 
 // ─── 4. Affiliate link bounds ─────────────────────────────────────────────────
 const MIN_AFFILIATE = 3;
