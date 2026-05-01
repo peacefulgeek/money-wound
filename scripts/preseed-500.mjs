@@ -129,7 +129,7 @@ const CONCLUSION_TYPES = [
 ];
 
 // ─── Generate one article ─────────────────────────────────────────────────────
-async function generateOne(topic, attemptNum) {
+async function generateOne(topic, attemptNum, previousFailures = []) {
   const asins = pickAsins(3);
   const phrases = getKaleshPhrases(3);
   const researchers = getResearchers();
@@ -181,7 +181,9 @@ Conclusion type: ${conclusionType}
 Use exactly these 3 Amazon affiliate links in the body (naturally placed, not in a list):
 ${asinLinks}
 
-IMPORTANT: Write AT LEAST 1,500 words. Include at least 5 section headers (h2). Include a FAQ section. Do not stop early. Keep writing until you reach 1,500 words minimum.`;
+IMPORTANT: Write AT LEAST 1,500 words. Include at least 5 section headers (h2). Include a FAQ section. Do not stop early. Keep writing until you reach 1,500 words minimum.${previousFailures.length > 0 ? `
+
+PREVIOUS ATTEMPT FAILED because you used these banned words: ${previousFailures.join(', ')}. DO NOT use any of these words in this attempt. Find different vocabulary.` : ''}`;
 
   const response = await client.chat.completions.create({
     model: MODEL,
@@ -759,20 +761,23 @@ async function run() {
       continue;
     }
 
-    let success = false;
-
+     let success = false;
+    let lastFailedWords = [];
     for (let attempt = 1; attempt <= MAX_ATTEMPTS && !success; attempt++) {
       try {
-        const { rawBody, asins } = await generateOne(topic, attempt - 1);
+        const { rawBody, asins } = await generateOne(topic, attempt - 1, lastFailedWords);
         const { passed, failures, cleanedBody, wordCount } = cleanAndGate(rawBody);
-
         // Extra check: enforce 1500+ floor for pre-seed
         if (wordCount < PRESEED_MIN_WORDS) {
           console.warn(`${progress} Word count too low (${wordCount} < ${PRESEED_MIN_WORDS}) attempt ${attempt}`);
           continue;
         }
-
         if (!passed) {
+          // Extract banned words from failures for next retry
+          const bannedWordFailures = failures
+            .filter(f => f.startsWith('banned-words:'))
+            .flatMap(f => f.replace('banned-words:', '').split(','));
+          if (bannedWordFailures.length > 0) lastFailedWords = bannedWordFailures;
           console.warn(`${progress} Gate FAIL attempt ${attempt}: ${failures.slice(0, 3).join(' | ')}`);
           continue;
         }
