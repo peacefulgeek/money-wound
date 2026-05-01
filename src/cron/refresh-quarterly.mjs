@@ -6,7 +6,7 @@
 import OpenAI from 'openai';
 import { cleanAndGate } from '../lib/article-quality-gate.mjs';
 import { verifyAsin, extractAsinsFromText } from '../lib/amazon-verify.mjs';
-import { query } from '../lib/db.mjs';
+import { getPublishedArticlesOlderThan, updateArticleBody } from '../lib/db.mjs';
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -18,19 +18,12 @@ const MAX_ATTEMPTS = 4;
 const BATCH_SIZE = 15;
 
 export async function refreshQuarterly() {
-  const { rows } = await query(`
-    SELECT id, slug, title, body, category, tags, asins_used
-    FROM articles
-    WHERE status = 'published'
-      AND (last_refreshed_90d IS NULL OR last_refreshed_90d < NOW() - INTERVAL '90 days')
-    ORDER BY COALESCE(last_refreshed_90d, created_at) ASC
-    LIMIT $1
-  `, [BATCH_SIZE]);
+  const articles = await getPublishedArticlesOlderThan(90, BATCH_SIZE, 'last_refreshed_90d');
 
-  console.log(`[refresh-quarterly] Processing ${rows.length} articles`);
+  console.log(`[refresh-quarterly] Processing ${articles.length} articles`);
   let refreshed = 0, kept = 0;
 
-  for (const article of rows) {
+  for (const article of articles) {
     let cleanedBody = null;
     let gateResult = null;
 
@@ -69,7 +62,7 @@ export async function refreshQuarterly() {
 
         // Re-gate after ASIN removal
         const finalResult = cleanAndGate(bodyWithValidAsins);
-        if (finalResult.pass) {
+        if (finalResult.passed) {
           cleanedBody = finalResult.cleanedBody;
           gateResult = finalResult;
           break;
@@ -81,21 +74,16 @@ export async function refreshQuarterly() {
       }
     }
 
-    if (gateResult && gateResult.pass) {
-      await query(
-        `UPDATE articles
-         SET body = $1, asins_used = $2, word_count = $3, last_refreshed_90d = NOW(), updated_at = NOW()
-         WHERE id = $4`,
-        [cleanedBody, gateResult.asins, gateResult.wordCount, article.id]
-      );
+    if (gateResult && gateResult.passed) {
+      await updateArticleBody(article.slug, cleanedBody, gateResult.wordCount, 'last_refreshed_90d');
       refreshed++;
       console.log(`[refresh-quarterly] Refreshed: ${article.slug}`);
     } else {
-      await query('UPDATE articles SET last_refreshed_90d = NOW() WHERE id = $1', [article.id]);
+      await updateArticleBody(article.slug, article.body, article.word_count, 'last_refreshed_90d');
       kept++;
       console.warn(`[refresh-quarterly] ${article.slug} - keeping original (gate failed all ${MAX_ATTEMPTS} attempts)`);
     }
   }
 
-  return { processed: rows.length, refreshed, kept };
+  return { processed: articles.length, refreshed, kept };
 }

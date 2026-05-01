@@ -10,10 +10,16 @@
  *   2. If queue has articles: publish the oldest one (assign hero image, set status='published')
  *   3. If queue is empty: generate a new article with DeepSeek, pass quality gate, insert as 'published'
  */
-import { query } from '../lib/db.mjs';
 import { generateArticleBody, generateMetaDescription } from '../lib/deepseek-generate.mjs';
 import { cleanAndGate } from '../lib/article-quality-gate.mjs';
 import { assignHeroImage } from '../lib/bunny-image.mjs';
+import {
+  getPublishedCount,
+  getOldestQueued,
+  publishArticle,
+  saveArticle,
+  articleExists,
+} from '../lib/db.mjs';
 
 // ─── ASIN Pool (money-wound niche) ────────────────────────────────────────────
 const ASIN_POOL = [
@@ -54,30 +60,9 @@ function inferCategory(title) {
   return 'money-psychology';
 }
 
-async function getPublishedCount() {
-  const { rows } = await query("SELECT COUNT(*) FROM articles WHERE status = 'published'");
-  return parseInt(rows[0].count, 10);
-}
-
-async function getOldestQueued() {
-  const { rows } = await query(
-    "SELECT * FROM articles WHERE status = 'queued' ORDER BY queued_at ASC LIMIT 1"
-  );
-  return rows[0] || null;
-}
-
 async function publishQueuedArticle(article) {
   const imageUrl = await assignHeroImage(article.slug);
-  await query(
-    `UPDATE articles
-     SET status = 'published',
-         published = true,
-         published_at = NOW(),
-         image_url = $1,
-         updated_at = NOW()
-     WHERE id = $2`,
-    [imageUrl, article.id]
-  );
+  await publishArticle(article.slug, { imageUrl });
   console.log(`[generate-article] Published from queue: ${article.slug}`);
   return article.slug;
 }
@@ -94,9 +79,9 @@ async function generateAndPublish(topic) {
     try {
       const asins = pickAsins(3);
       const rawBody = await generateArticleBody(topic, asins);
-      const { pass, failures, cleanedBody, wordCount, affiliateLinks } = cleanAndGate(rawBody);
+      const { passed, failures, cleanedBody, wordCount, affiliateLinks } = cleanAndGate(rawBody);
 
-      if (!pass) {
+      if (!passed) {
         console.warn(`[generate-article] Gate FAILED (attempt ${attempt}):`, failures);
         lastFailures = failures;
         continue;
@@ -108,25 +93,28 @@ async function generateAndPublish(topic) {
       const imageUrl = await assignHeroImage(slug);
       const readingTime = Math.ceil(wordCount / 200);
 
-      // Check for slug collision
-      const { rows: existing } = await query('SELECT id FROM articles WHERE slug = $1', [slug]);
-      const finalSlug = existing.length > 0 ? `${slug}-${Date.now()}` : slug;
+      // Handle slug collision
+      const exists = await articleExists(slug);
+      const finalSlug = exists ? `${slug}-${Date.now()}` : slug;
 
-      await query(
-        `INSERT INTO articles
-           (slug, title, body, meta_description, category, tags, image_url, image_alt,
-            reading_time, word_count, asins_used, published, status, published_at, queued_at,
-            opener_type, conclusion_type)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW(),$14,$15)`,
-        [
-          finalSlug, topic, cleanedBody, metaDescription,
-          category, [category, 'healing', 'money-psychology'],
-          imageUrl, topic,
-          readingTime, wordCount, asins,
-          true, 'published',
-          'gut-punch statement', 'reflection'
-        ]
-      );
+      await saveArticle({
+        slug: finalSlug,
+        title: topic,
+        body: cleanedBody,
+        meta_description: metaDescription,
+        category,
+        tags: [category, 'healing', 'money-psychology'],
+        image_url: imageUrl,
+        image_alt: topic,
+        reading_time: readingTime,
+        word_count: wordCount,
+        asins_used: asins,
+        published: true,
+        status: 'published',
+        published_at: new Date().toISOString(),
+        queued_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
 
       console.log(`[generate-article] Published new article: ${finalSlug} (${wordCount} words, ${affiliateLinks} links)`);
       return finalSlug;

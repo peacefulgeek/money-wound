@@ -1,50 +1,31 @@
 import express from 'express';
-import { getDb } from '../../src/lib/db.mjs';
+import { getPublishedArticles, getPublishedCount, getArticle } from '../../src/lib/db.mjs';
 
 export const articlesRouter = express.Router();
 
-// CRITICAL: All public routes MUST filter by status = 'published'.
-// Queued articles must NEVER leak to the frontend.
-
+// GET /api/articles?limit=20&offset=0&category=X
 articlesRouter.get('/', async (req, res) => {
   try {
-    const db = await getDb();
     const limit = parseInt(req.query.limit as string) || 20;
     const offset = parseInt(req.query.offset as string) || 0;
-    const category = req.query.category as string;
-
-    let queryStr = `SELECT slug, title, meta_description, category, tags, image_url, image_alt,
-                           reading_time, published_at, word_count
-                    FROM articles
-                    WHERE status = 'published'`;
-    const params: any[] = [];
-
-    if (category) {
-      params.push(category);
-      queryStr += ` AND category = $${params.length}`;
-    }
-
-    queryStr += ` ORDER BY published_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-    params.push(limit, offset);
-
-    const { rows } = await db.query(queryStr, params);
-    const countResult = await db.query("SELECT COUNT(*) FROM articles WHERE status = 'published'");
-    res.json({ articles: rows, total: parseInt(countResult.rows[0].count) });
+    const category = (req.query.category as string) || null;
+    const articles = await getPublishedArticles({ limit, offset, category });
+    const total = await getPublishedCount();
+    res.json({ articles, total });
   } catch (err) {
     console.error('[articles route]', err);
     res.status(500).json({ error: 'Failed to fetch articles' });
   }
 });
 
+// GET /api/articles/:slug
 articlesRouter.get('/:slug', async (req, res) => {
   try {
-    const db = await getDb();
-    const { rows } = await db.query(
-      "SELECT * FROM articles WHERE slug = $1 AND status = 'published'",
-      [req.params.slug]
-    );
-    if (!rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(rows[0]);
+    const article = await getArticle(req.params.slug);
+    if (!article || article.status !== 'published') {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    res.json(article);
   } catch (err) {
     console.error('[articles route]', err);
     res.status(500).json({ error: 'Failed to fetch article' });

@@ -6,9 +6,9 @@
  * Run: node scripts/preseed-500.mjs
  *
  * Requirements:
- *   - DATABASE_URL env var pointing to a running Postgres instance
  *   - OPENAI_API_KEY + OPENAI_BASE_URL (DeepSeek endpoint)
  *   - OPENAI_MODEL (default: deepseek-v4-pro)
+ *   - Run from project root (data/articles/ is the JSON store - no database needed)
  */
 import OpenAI from 'openai';
 import { query } from '../src/lib/db.mjs';

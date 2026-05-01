@@ -35,9 +35,8 @@ server.on('exit', (code) => {
 // ─── Helper: get published count ──────────────────────────────────────────────
 async function getPublishedCount() {
   try {
-    const { query } = await import('../src/lib/db.mjs');
-    const { rows } = await query("SELECT COUNT(*) FROM articles WHERE status = 'published'");
-    return parseInt(rows[0].count, 10);
+    const { countPublishedArticles } = await import('../src/lib/db.mjs');
+    return await countPublishedArticles();
   } catch {
     return 0;
   }

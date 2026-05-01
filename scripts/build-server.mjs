@@ -31,7 +31,6 @@ await build({
     'express',
     'compression',
     'serve-static',
-    'pg',
     'node-cron',
     'openai',
     'react',

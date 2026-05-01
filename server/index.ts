@@ -7,40 +7,42 @@ import { healthRouter } from './routes/health.js';
 import { articlesRouter } from './routes/articles.js';
 import { sitemapRouter } from './routes/sitemap.js';
 import { renderPage } from './ssr.js';
-import { getDb } from '../src/lib/db.mjs';
+import {
+  getPublishedArticles,
+  getPublishedCount,
+  getArticle,
+  rebuildIndex,
+} from '../src/lib/db.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const isDev = process.env.NODE_ENV !== 'production';
 const PORT = parseInt(process.env.PORT ?? '3000', 10);
 
+// ─── Rebuild index on startup to ensure consistency ───────────────────────────
+try {
+  rebuildIndex();
+  console.log('[server] Article index rebuilt from JSON files');
+} catch (err) {
+  console.error('[server] Index rebuild error (non-fatal):', err);
+}
+
 async function getInitialData(url: string): Promise<Record<string, any>> {
   try {
-    const db = await getDb();
     const pathname = url.split('?')[0];
     if (pathname === '/' || pathname === '') {
-      const { rows } = await db.query(
-        `SELECT slug, title, meta_description, category, image_url, image_alt, reading_time, published_at
-         FROM articles WHERE status = 'published' ORDER BY published_at DESC LIMIT 6`
-      );
-      return { articles: rows };
+      const articles = await getPublishedArticles({ limit: 6 });
+      return { articles };
     }
     if (pathname === '/articles') {
-      const { rows } = await db.query(
-        `SELECT slug, title, meta_description, category, image_url, image_alt, reading_time, published_at
-         FROM articles WHERE status = 'published' ORDER BY published_at DESC LIMIT 20`
-      );
-      const countResult = await db.query("SELECT COUNT(*) FROM articles WHERE status = 'published'");
-      return { articles: rows, total: parseInt(countResult.rows[0].count) };
+      const articles = await getPublishedArticles({ limit: 20 });
+      const total = await getPublishedCount();
+      return { articles, total };
     }
     const articleMatch = pathname.match(/^\/articles\/([^/?]+)$/);
     if (articleMatch) {
-      const slug = articleMatch[1];
-      const { rows } = await db.query(
-        "SELECT * FROM articles WHERE slug = $1 AND status = 'published'",
-        [slug]
-      );
-      if (rows.length) return { article: rows[0] };
+      const article = await getArticle(articleMatch[1]);
+      if (article && article.status === 'published') return { article };
     }
     return {};
   } catch (err) {
@@ -54,13 +56,12 @@ async function createServer() {
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
 
-  // ─── www → non-www 301 redirect (must be first) ───────────────
-  // Runs in production only so local dev is unaffected.
+  // ─── www → non-www 301 redirect (must be first) ───────────────────────────
   app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (process.env.NODE_ENV === 'production') {
       const host = req.headers.host ?? '';
       if (host.startsWith('www.')) {
-        const canonical = host.slice(4); // strip 'www.'
+        const canonical = host.slice(4);
         const proto = req.headers['x-forwarded-proto'] ?? 'https';
         return res.redirect(301, `${proto}://${canonical}${req.originalUrl}`);
       }
@@ -69,7 +70,6 @@ async function createServer() {
   });
 
   app.use(compression());
-
   app.use('/health', healthRouter);
   app.use('/api/articles', articlesRouter);
   app.use('/sitemap.xml', sitemapRouter);
@@ -94,9 +94,7 @@ async function createServer() {
       index: false,
       maxAge: '1y',
       setHeaders(res, filepath) {
-        if (/\.(html)$/.test(filepath)) {
-          res.setHeader('Cache-Control', 'no-cache');
-        }
+        if (/\.(html)$/.test(filepath)) res.setHeader('Cache-Control', 'no-cache');
       }
     }));
     app.use('*', async (req, res, next) => {
@@ -116,29 +114,8 @@ async function createServer() {
   return app;
 }
 
-// ─── Startup seed: populate 30 articles if DB is empty ────────
-async function maybeRunSeed() {
-  try {
-    const db = await getDb();
-    const { rows } = await db.query('SELECT COUNT(*) FROM articles');
-    const count = parseInt(rows[0].count, 10);
-    if (count === 0) {
-      console.log('[server] Empty DB detected - running startup seed...');
-      const { default: seedFn } = await import('../scripts/seed-startup.mjs' as any);
-      await seedFn();
-      console.log('[server] Startup seed complete');
-    } else {
-      console.log(`[server] DB has ${count} articles - skipping seed`);
-    }
-  } catch (err) {
-    console.error('[server] Startup seed error (non-fatal):', err);
-  }
-}
-
-await maybeRunSeed();
 const app = await createServer();
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[server] Listening on 0.0.0.0:${PORT} (NODE_ENV=${process.env.NODE_ENV})`);
 });
-
 export default app;

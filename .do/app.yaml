@@ -31,12 +31,6 @@ services:
       - key: AMAZON_TAG
         value: spankyspinola-20
         scope: RUN_TIME
-      - key: DATABASE_URL
-        scope: RUN_TIME
-        type: SECRET
-      - key: GH_PAT
-        scope: RUN_TIME
-        type: SECRET
       - key: OPENAI_API_KEY
         scope: RUN_TIME
         type: SECRET

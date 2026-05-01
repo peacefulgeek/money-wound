@@ -1,6 +1,6 @@
 import { verifyAsinBatch, buildAmazonUrl, countAmazonLinks, extractAsinsFromText } from '../lib/amazon-verify.mjs';
 import { matchProducts } from '../lib/match-products.mjs';
-import { query } from '../lib/db.mjs';
+import { getPublishedArticlesWithAsins, updateArticleBody } from '../lib/db.mjs';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -67,10 +67,10 @@ export async function runAsinHealthCheck() {
 }
 
 async function swapDeadAsinsAcrossArticles(deadAsins, cache) {
-  const { rows: articles } = await query(`
-    SELECT id, slug, body, category, tags, asins_used FROM articles
-    WHERE asins_used && $1::text[]
-  `, [deadAsins]);
+  const allArticles = await getPublishedArticlesWithAsins();
+  const articles = allArticles.filter(a =>
+    Array.isArray(a.asins_used) && a.asins_used.some(asin => deadAsins.includes(asin))
+  );
 
   console.log(`[asin-health-check] Swapping dead ASINs in ${articles.length} articles`);
 
@@ -105,10 +105,7 @@ async function swapDeadAsinsAcrossArticles(deadAsins, cache) {
       ).join('\n');
     }
 
-    await query(
-      'UPDATE articles SET body = $1, asins_used = $2 WHERE id = $3',
-      [body, extractAsinsFromText(body), article.id]
-    );
+    await updateArticleBody(article.slug, body, article.word_count || 0, null);
     await new Promise(r => setTimeout(r, 200));
   }
 }

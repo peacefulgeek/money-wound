@@ -6,7 +6,7 @@
 import OpenAI from 'openai';
 import { cleanAndGate } from '../lib/article-quality-gate.mjs';
 import { assignHeroImage } from '../lib/bunny-image.mjs';
-import { query } from '../lib/db.mjs';
+import { getArticlesByCategory, saveArticle } from '../lib/db.mjs';
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -40,9 +40,7 @@ function pickAsins(primary, count = 3) {
 
 export async function runProductSpotlight() {
   // Pick a product not recently spotlighted
-  const { rows: recent } = await query(
-    "SELECT slug FROM articles WHERE category = 'product-spotlight' ORDER BY created_at DESC LIMIT 10"
-  );
+  const recent = await getArticlesByCategory('product-spotlight', 10);
   const recentSlugs = recent.map(r => r.slug);
   const available = SPOTLIGHT_ASINS.filter(p => !recentSlugs.some(s => s.includes(p.asin)));
 
@@ -88,9 +86,9 @@ Format as HTML body only starting with <h1>.`
       });
 
       const rawBody = response.choices[0].message.content ?? '';
-      const { pass, failures, cleanedBody, wordCount } = cleanAndGate(rawBody);
+      const { passed, failures, cleanedBody, wordCount } = cleanAndGate(rawBody);
 
-      if (!pass) {
+      if (!passed) {
         console.warn(`[product-spotlight] Gate failed attempt ${attempt}:`, failures.slice(0, 3).join(' | '));
         continue;
       }
@@ -100,23 +98,24 @@ Format as HTML body only starting with <h1>.`
       const title = titleMatch ? titleMatch[1] : `Money Healing Tool: ${product.name}`;
       const imageUrl = await assignHeroImage(slug);
 
-      await query(
-        `INSERT INTO articles
-           (slug, title, body, meta_description, category, tags, image_url, image_alt,
-            reading_time, word_count, asins_used, published, status, published_at, queued_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW())
-         ON CONFLICT (slug) DO NOTHING`,
-        [
-          slug, title, cleanedBody,
-          `Kalesh reviews ${product.name} - an honest look at how this tool supports financial healing.`,
-          'product-spotlight',
-          ['product-spotlight', product.category, 'books'],
-          imageUrl, title,
-          Math.ceil(wordCount / 200), wordCount,
-          asins.map(a => a.asin),
-          true, 'published'
-        ]
-      );
+      await saveArticle({
+        slug,
+        title,
+        body: cleanedBody,
+        meta_description: `Kalesh reviews ${product.name} - an honest look at how this tool supports financial healing.`,
+        category: 'product-spotlight',
+        tags: ['product-spotlight', product.category, 'books'],
+        image_url: imageUrl,
+        image_alt: title,
+        reading_time: Math.ceil(wordCount / 200),
+        word_count: wordCount,
+        asins_used: asins.map(a => a.asin),
+        published: true,
+        status: 'published',
+        published_at: new Date().toISOString(),
+        queued_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
 
       console.log(`[product-spotlight] Published: ${slug} (${wordCount} words)`);
       return { success: true, slug };
